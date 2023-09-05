@@ -132,9 +132,35 @@ void set_params_fprop(FlashFwdParams &params,
 
     for (int i = 0; i < b; i++){
         int temp_seqlen_q = params.host_seqlens_q[i+1] - params.host_seqlens_q[i];
-        int temp_q_stride = get_size_in_bytes(d * h * temp_seqlen_q, data_type);
+        //int temp_q_stride = get_size_in_bytes(d * h * temp_seqlen_q, data_type);
+        int temp_q_stride;
+        int temp_q_n = d * h * temp_seqlen_q;
+        if(data_type == torch::kFloat32){
+            temp_q_stride = temp_q_n * 4;
+        }else if(data_type == torch::kBFloat16){
+            temp_q_stride = temp_q_n * 2;
+        }else if(data_type == torch::kFloat16){
+            temp_q_stride = temp_q_n * 2;
+        }else if(data_type == torch::kInt32){
+            temp_q_stride = temp_q_n * 4;
+        }else if(data_type == torch::kInt8){
+            temp_q_stride = temp_q_n;
+        }
         int temp_seqlen_k = params.host_seqlens_k[i+1] - params.host_seqlens_k[i];
-        int temp_k_stride = get_size_in_bytes(d * h * temp_seqlen_k, data_type);
+        //int temp_k_stride = get_size_in_bytes(d * h * temp_seqlen_k, data_type);
+        int temp_k_stride;
+        int temp_k_n = d * h * temp_seqlen_k;
+        if(data_type == torch::kFloat32){
+            temp_k_stride = temp_k_n * 4;
+        }else if(data_type == torch::kBFloat16){
+            temp_k_stride = temp_k_n * 2;
+        }else if(data_type == torch::kFloat16){
+            temp_k_stride = temp_k_n * 2;
+        }else if(data_type == torch::kInt32){
+            temp_k_stride = temp_k_n * 4;
+        }else if(data_type == torch::kInt8){
+            temp_k_stride = temp_k_n;
+        }
 
         if(!params.is_mnko_padding && d <= 32){
             params.is_mnko_padding = ((temp_seqlen_q % 128)==0 && (temp_seqlen_k % 128)==0 ? false : true);
@@ -164,7 +190,20 @@ void set_params_fprop(FlashFwdParams &params,
         out_ptr = out_ptr + temp_q_stride;
 
         params.softmax_lse_ptr.push_back(reinterpret_cast<void*>(lse_ptr));
-        int temp_lse_stride = get_size_in_bytes(h * seqlen_q, acc_type);
+        //int temp_lse_stride = get_size_in_bytes(h * seqlen_q, acc_type);
+        int temp_lse_stride;
+        int temp_lse_n = h * seqlen_q;
+        if(acc_type == torch::kFloat32){
+            temp_lse_stride = temp_lse_n * 4;
+        }else if(acc_type == torch::kBFloat16){
+            temp_lse_stride = temp_lse_n * 2;
+        }else if(acc_type == torch::kFloat16){
+            temp_lse_stride = temp_lse_n * 2;
+        }else if(acc_type == torch::kInt32){
+            temp_lse_stride = temp_lse_n * 4;
+        }else if(acc_type == torch::kInt8){
+            temp_lse_stride = temp_lse_n;
+        }
         lse_ptr = lse_ptr + temp_lse_stride;
 
         if(s_d){
@@ -274,11 +313,63 @@ void set_params_dgrad(FlashBwdParams &params,
     
     for (int i = 0; i < b; i++){
         int temp_seqlen_q = params.host_seqlens_q[i+1] - params.host_seqlens_q[i];
-        int temp_q_stride = get_size_in_bytes(d * h * temp_seqlen_q, data_type);
-        int temp_dq_stride = get_size_in_bytes(d * h * temp_seqlen_q, dq.dtype());
+        //int temp_q_stride = get_size_in_bytes(d * h * temp_seqlen_q, data_type);
+        int temp_q_stride;
+        int temp_q_n = d * h * temp_seqlen_q;
+        if(data_type == torch::kFloat32){
+            temp_q_stride = temp_q_n * 4;
+        }else if(data_type == torch::kBFloat16){
+            temp_q_stride = temp_q_n * 2;
+        }else if(data_type == torch::kFloat16){
+            temp_q_stride = temp_q_n * 2;
+        }else if(data_type == torch::kInt32){
+            temp_q_stride = temp_q_n * 4;
+        }else if(data_type == torch::kInt8){
+            temp_q_stride = temp_q_n;
+        }
+        //int temp_dq_stride = get_size_in_bytes(d * h * temp_seqlen_q, dq.dtype());
+        int temp_dq_stride;
+        int temp_dq_n = d * h * temp_seqlen_q;
+        if(dq.dtype() == torch::kFloat32){
+            temp_dq_stride = temp_dq_n * 4;
+        }else if(dq.dtype() == torch::kBFloat16){
+            temp_dq_stride = temp_dq_n * 2;
+        }else if(dq.dtype() == torch::kFloat16){
+            temp_dq_stride = temp_dq_n * 2;
+        }else if(dq.dtype() == torch::kInt32){
+            temp_dq_stride = temp_dq_n * 4;
+        }else if(dq.dtype() == torch::kInt8){
+            temp_dq_stride = temp_dq_n;
+        }
         int temp_seqlen_k = params.host_seqlens_k[i+1] - params.host_seqlens_k[i];
-        int temp_k_stride = get_size_in_bytes(d * h * temp_seqlen_k, data_type);
-        int temp_dk_stride = get_size_in_bytes(d * h * temp_seqlen_k, dk.dtype());
+        //int temp_k_stride = get_size_in_bytes(d * h * temp_seqlen_k, data_type);
+        int temp_k_stride;
+        int temp_k_n = d * h * temp_seqlen_k;
+        if(data_type == torch::kFloat32){
+            temp_k_stride = temp_k_n * 4;
+        }else if(data_type == torch::kBFloat16){
+            temp_k_stride = temp_k_n * 2;
+        }else if(data_type == torch::kFloat16){
+            temp_k_stride = temp_k_n * 2;
+        }else if(data_type == torch::kInt32){
+            temp_k_stride = temp_k_n * 4;
+        }else if(data_type == torch::kInt8){
+            temp_k_stride = temp_k_n;
+        }
+        //int temp_dk_stride = get_size_in_bytes(d * h * temp_seqlen_k, dk.dtype());
+        int temp_dk_stride;
+        int temp_dk_n = d * h * temp_seqlen_k;
+        if(dk.dtype() == torch::kFloat32){
+            temp_dk_stride = temp_dk_n * 4;
+        }else if(dk.dtype() == torch::kBFloat16){
+            temp_dk_stride = temp_dk_n * 2;
+        }else if(dk.dtype() == torch::kFloat16){
+            temp_dk_stride = temp_dk_n * 2;
+        }else if(dk.dtype() == torch::kInt32){
+            temp_dk_stride = temp_dk_n * 4;
+        }else if(dk.dtype() == torch::kInt8){
+            temp_dk_stride = temp_dk_n;
+        }
         if(is_performance_mode){
             params.q_ptr.push_back(reinterpret_cast<void*>(q_ptr));
             q_ptr = q_ptr + temp_q_stride * params.q_stride_multiplier;
@@ -345,7 +436,20 @@ void set_params_dgrad(FlashBwdParams &params,
         params.lse_ptr.push_back(reinterpret_cast<const void*>(lse_ptr));
         params.ygrad_ptr.push_back(reinterpret_cast<const void*>(ygrad_ptr));
 
-        int temp_lse_stride = get_size_in_bytes(h * seqlen_q, acc_type);
+        //int temp_lse_stride = get_size_in_bytes(h * seqlen_q, acc_type);
+        int temp_lse_stride;
+        int temp_lse_n = h * seqlen_q;
+        if(acc_type == torch::kFloat32){
+            temp_lse_stride = temp_lse_n * 4;
+        }else if(acc_type == torch::kBFloat16){
+            temp_lse_stride = temp_lse_n * 2;
+        }else if(acc_type == torch::kFloat16){
+            temp_lse_stride = temp_lse_n * 2;
+        }else if(acc_type == torch::kInt32){
+            temp_lse_stride = temp_lse_n * 4;
+        }else if(acc_type == torch::kInt8){
+            temp_lse_stride = temp_lse_n;
+        }
         y_ptr += temp_q_stride;
         ygrad_ptr += temp_q_stride;
         lse_ptr += temp_lse_stride;
