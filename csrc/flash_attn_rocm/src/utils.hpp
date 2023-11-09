@@ -68,21 +68,21 @@
 
 using Index = ck::index_t;
 
-template <typename T>
-static inline size_t get_size_in_bytes(size_t n, T dtype) {
-  if (dtype == torch::kFloat32) {
-    return n * 4;
-  } else if (dtype == torch::kBFloat16) {
-    return n * 2;
-  } else if (dtype == torch::kFloat16) {
-    return n * 2;
-  } else if (dtype == torch::kInt32) {
-    return n * 4;
-  } else if (dtype == torch::kInt8) {
-    return n;
-  }
-  return 0;
-}
+//template <typename T>
+//static inline size_t get_size_in_bytes(size_t n, T dtype) {
+//  if (dtype == torch::kFloat32) {
+//    return n * 4;
+//  } else if (dtype == torch::kBFloat16) {
+//    return n * 2;
+//  } else if (dtype == torch::kFloat16) {
+//    return n * 2;
+//  } else if (dtype == torch::kInt32) {
+//    return n * 4;
+//  } else if (dtype == torch::kInt8) {
+//    return n;
+//  }
+//  return 0;
+//}
 
 static std::tuple<uint64_t, uint64_t> unpack(at::PhiloxCudaState arg) {
   if (arg.captured_) {

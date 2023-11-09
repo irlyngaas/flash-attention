@@ -288,6 +288,12 @@ struct GroupedParams : public BaseParams {
     char *out_ptr = reinterpret_cast<char *>(out.data_ptr());
     char *softmax_lse_ptr = reinterpret_cast<char *>(softmax_lse.data_ptr());
 
+    int q_stride;
+    int k_stride;
+    int v_stride;
+    int out_stride;
+    int softmax_lse_stride;
+
     // TODO: move to GPU
     for (int i = 0; i < b; ++i) {
       int curr_q_batch_stride = seqlens_q[i] * q_seq_stride;
@@ -305,20 +311,100 @@ struct GroupedParams : public BaseParams {
       }
 
       q_ptrs.push_back(reinterpret_cast<void *>(q_ptr));
-      q_ptr += get_size_in_bytes(curr_q_batch_stride, q.dtype());
+      if (q.dtype() == torch::kFloat32) {
+          q_stride = curr_q_batch_stride * 4;
+      }
+      else if (q.dtype() == torch::kBFloat16) {
+          q_stride = curr_q_batch_stride * 2;
+      }
+      else if (q.dtype() == torch::kFloat16) {
+          q_stride = curr_q_batch_stride * 2;
+      }
+      else if (q.dtype() == torch::kInt32) {
+          q_stride = curr_q_batch_stride * 4;
+      }
+      else if (q.dtype() == torch::kInt8) {
+          q_stride = curr_q_batch_stride;
+      }
+      //q_ptr += get_size_in_bytes(curr_q_batch_stride, q.dtype());
+      q_ptr += q_stride;
 
       k_ptrs.push_back(reinterpret_cast<void *>(k_ptr));
-      k_ptr += get_size_in_bytes(curr_kv_batch_stride, k.dtype());
+      if (k.dtype() == torch::kFloat32) {
+          k_stride = curr_kv_batch_stride * 4;
+      }
+      else if (k.dtype() == torch::kBFloat16) {
+          k_stride = curr_kv_batch_stride * 2;
+      }
+      else if (k.dtype() == torch::kFloat16) {
+          k_stride = curr_kv_batch_stride * 2;
+      }
+      else if (k.dtype() == torch::kInt32) {
+          k_stride = curr_kv_batch_stride * 4;
+      }
+      else if (k.dtype() == torch::kInt8) {
+          k_stride = curr_kv_batch_stride;
+      }
+      //k_ptr += get_size_in_bytes(curr_kv_batch_stride, k.dtype());
+      k_ptr += k_stride;
 
       v_ptrs.push_back(reinterpret_cast<void *>(v_ptr));
-      v_ptr += get_size_in_bytes(curr_kv_batch_stride, v.dtype());
+      if (v.dtype() == torch::kFloat32) {
+          v_stride = curr_kv_batch_stride * 4;
+      }
+      else if (v.dtype() == torch::kBFloat16) {
+          v_stride = curr_kv_batch_stride * 2;
+      }
+      else if (v.dtype() == torch::kFloat16) {
+          v_stride = curr_kv_batch_stride * 2;
+      }
+      else if (v.dtype() == torch::kInt32) {
+          v_stride = curr_kv_batch_stride * 4;
+      }
+      else if (v.dtype() == torch::kInt8) {
+          v_stride = curr_kv_batch_stride;
+      }
+      //v_ptr += get_size_in_bytes(curr_kv_batch_stride, v.dtype());
+      v_ptr += v_stride;
 
       out_ptrs.push_back(reinterpret_cast<void *>(out_ptr));
-      out_ptr += get_size_in_bytes(curr_out_batch_stride, out.dtype());
+      if (out.dtype() == torch::kFloat32) {
+          out_stride = curr_out_batch_stride * 4;
+      }
+      else if (out.dtype() == torch::kBFloat16) {
+          out_stride = curr_out_batch_stride * 2;
+      }
+      else if (out.dtype() == torch::kFloat16) {
+          out_stride = curr_out_batch_stride * 2;
+      }
+      else if (out.dtype() == torch::kInt32) {
+          out_stride = curr_out_batch_stride * 4;
+      }
+      else if (out.dtype() == torch::kInt8) {
+          out_stride = curr_out_batch_stride;
+      }
+      //out_ptr += get_size_in_bytes(curr_out_batch_stride, out.dtype());
+      out_ptr += out_stride;
 
       softmax_lse_ptrs.push_back(reinterpret_cast<void *>(softmax_lse_ptr));
-      softmax_lse_ptr +=
-          get_size_in_bytes(softmax_lse_batch_stride, softmax_lse.dtype());
+      if (softmax_lse.dtype() == torch::kFloat32) {
+          softmax_lse_stride = softmax_lse_batch_stride * 4;
+      }
+      else if (softmax_lse.dtype() == torch::kBFloat16) {
+          softmax_lse_stride = softmax_lse_batch_stride * 2;
+      }
+      else if (softmax_lse.dtype() == torch::kFloat16) {
+          softmax_lse_stride = softmax_lse_batch_stride * 2;
+      }
+      else if (softmax_lse.dtype() == torch::kInt32) {
+          softmax_lse_stride = softmax_lse_batch_stride * 4;
+      }
+      else if (softmax_lse.dtype() == torch::kInt8) {
+          softmax_lse_stride = softmax_lse_batch_stride;
+      }
+      //softmax_lse_ptr +=
+      //    get_size_in_bytes(softmax_lse_batch_stride, softmax_lse.dtype());
+      softmax_lse_ptr += softmax_lse_stride;
 
       // Q layout [b, max_seqlen_q, h_q, d]
       std::vector<Index> q_lengths{1, h_q, seqlens_q[i], d};
@@ -450,6 +536,11 @@ struct FlashBwdGroupedParams : public GroupedParams {
     TORCH_CHECK(dq_seq_stride == q_seq_stride);
     TORCH_CHECK(dout_seq_stride == out_seq_stride);
 
+    int dq_stride;
+    int dk_stride;
+    int dv_stride;
+    int dout_stride;
+
     auto opts = q.options();
     for (int i = 0; i < b; ++i) {
       // TODO: reuse it in the foward on GPU
@@ -460,16 +551,80 @@ struct FlashBwdGroupedParams : public GroupedParams {
       z_ptrs.push_back(nullptr);
 
       dq_ptrs.push_back(reinterpret_cast<void *>(dq_ptr));
-      dq_ptr += get_size_in_bytes(curr_dq_batch_stride, dq.dtype());
+      if (dq.dtype() == torch::kFloat32) {
+          dq_stride = curr_dq_batch_stride * 4;
+      }
+      else if (dq.dtype() == torch::kBFloat16) {
+          dq_stride = curr_dq_batch_stride * 2;
+      }
+      else if (dq.dtype() == torch::kFloat16) {
+          dq_stride = curr_dq_batch_stride * 2;
+      }
+      else if (dq.dtype() == torch::kInt32) {
+          dq_stride = curr_dq_batch_stride * 4;
+      }
+      else if (dq.dtype() == torch::kInt8) {
+          dq_stride = curr_dq_batch_stride;
+      }
+      //dq_ptr += get_size_in_bytes(curr_dq_batch_stride, dq.dtype());
+      dq_ptr += dq_stride;
 
       dk_ptrs.push_back(reinterpret_cast<void *>(dk_ptr));
-      dk_ptr += get_size_in_bytes(curr_dkv_batch_stride, dk.dtype());
+      if (dk.dtype() == torch::kFloat32) {
+          dk_stride = curr_dkv_batch_stride * 4;
+      }
+      else if (dk.dtype() == torch::kBFloat16) {
+          dk_stride = curr_dkv_batch_stride * 2;
+      }
+      else if (dk.dtype() == torch::kFloat16) {
+          dk_stride = curr_dkv_batch_stride * 2;
+      }
+      else if (dk.dtype() == torch::kInt32) {
+          dk_stride = curr_dkv_batch_stride * 4;
+      }
+      else if (dk.dtype() == torch::kInt8) {
+          dk_stride = curr_dkv_batch_stride;
+      }
+      //dk_ptr += get_size_in_bytes(curr_dkv_batch_stride, dk.dtype());
+      dk_ptr += dk_stride;
 
       dv_ptrs.push_back(reinterpret_cast<void *>(dv_ptr));
-      dv_ptr += get_size_in_bytes(curr_dkv_batch_stride, dv.dtype());
+      if (dv.dtype() == torch::kFloat32) {
+          dv_stride = curr_dkv_batch_stride * 4;
+      }
+      else if (dv.dtype() == torch::kBFloat16) {
+          dv_stride = curr_dkv_batch_stride * 2;
+      }
+      else if (dv.dtype() == torch::kFloat16) {
+          dv_stride = curr_dkv_batch_stride * 2;
+      }
+      else if (dv.dtype() == torch::kInt32) {
+          dv_stride = curr_dkv_batch_stride * 4;
+      }
+      else if (dv.dtype() == torch::kInt8) {
+          dv_stride = curr_dkv_batch_stride;
+      }
+      //dv_ptr += get_size_in_bytes(curr_dkv_batch_stride, dv.dtype());
+      dv_ptr += dv_stride;
 
       dout_ptrs.push_back(reinterpret_cast<const void *>(dout_ptr));
-      dout_ptr += get_size_in_bytes(curr_dout_batch_stride, dout.dtype());
+      if (dout.dtype() == torch::kFloat32) {
+          dout_stride = curr_dout_batch_stride * 4;
+      }
+      else if (dout.dtype() == torch::kBFloat16) {
+          dout_stride = curr_dout_batch_stride * 2;
+      }
+      else if (dout.dtype() == torch::kFloat16) {
+          dout_stride = curr_dout_batch_stride * 2;
+      }
+      else if (dout.dtype() == torch::kInt32) {
+          dout_stride = curr_dout_batch_stride * 4;
+      }
+      else if (dout.dtype() == torch::kInt8) {
+          dout_stride = curr_dout_batch_stride;
+      }
+      //dout_ptr += get_size_in_bytes(curr_dout_batch_stride, dout.dtype());
+      dout_ptr += dout_stride;
 
       dsoftmax_vec.push_back(
           torch::empty({1, h_q, seqlens_q[i]}, opts.dtype(torch::kFloat32)));

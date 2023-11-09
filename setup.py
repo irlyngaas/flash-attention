@@ -232,11 +232,11 @@ else:
                   "csrc/flash_attn_rocm/composable_kernel/library/src/utility/device_memory.cu",
                   "csrc/flash_attn_rocm/composable_kernel/library/src/utility/host_tensor.cu"],
           extra_compile_args={
-              "cxx": ["-O3", "-std=c++20", "-DNDEBUG"] + generator_flag,
+              "cxx": ["-O3", "-std=c++17", "-DNDEBUG"] + generator_flag,
               "nvcc":
                   [
                       "-O3",
-                      "-std=c++20",
+                      "-std=c++17",
                       "-DNDEBUG",
                       "-U__CUDA_NO_HALF_OPERATORS__",
                       "-U__CUDA_NO_HALF_CONVERSIONS__",
